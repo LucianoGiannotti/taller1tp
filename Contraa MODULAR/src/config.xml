@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<configuracion>
+  <debug>
+  	<level>ERROR</level>
+  </debug>
+  <escenarios>
+        <nivel1>
+		<fondo1 Ruta = "/home/file11.bmp" />
+		<fondo2 Ruta = "/home/file12.bmp" />
+		<fondo3 Ruta = "/home/file13.bmp" />
+           	<plataforma Tipo= "piedra" xi = "500" xf = "850" y = "350"/>
+          	<plataforma2 Tipo= "hielo" xi = "4000" xf = "4500" y = "420"/>
+        </nivel1>
+        <nivel2>
+		<fondo1 Ruta = "/home/file21.bmp" />
+		<fondo2 Ruta = "/home/file22.bmp" />
+		<fondo3 Ruta = "/home/file23.bmp" />
+	</nivel2>
+        <nivel3>
+		<fondo1 Ruta = "/home/file31.bmp" />
+		<fondo2 Ruta = "/home/file32.bmp" />
+		<fondo3 Ruta = "/home/file33.bmp" />
+        </nivel3>
+  </escenarios>
+</configuracion>
