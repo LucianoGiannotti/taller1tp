@@ -2,9 +2,9 @@
 and may not be redistributed without written permission.*/
 
 //Using SDL, SDL_image, standard IO, vectors, and strings
-#include <SDL.h>
-#include <SDL_image.h>
-#include <stdio.h>
+#include <SDL2/SDL.h>
+#include <SDL2/SDL_image.h>
+#include <cstdio>
 #include <string>
 
 //Debug mode
@@ -508,7 +508,7 @@ bool loadMedia()
 	bool success = true;
 
 	//Load player texture
-	if( !gPlayerTexture.loadFromFile( "E:\\Escritorio\\gametest\\bin\\Debug\\Player1.png" ) )
+	if( !gPlayerTexture.loadFromFile( "resources/Player1.png" ) )
 	{
 		printf( "Failed to load player texture!\n" );
 		success = false;
@@ -554,7 +554,7 @@ bool loadMedia()
 	}
 
 	//Load first background texture
-	if( !gBGTexture.loadFromFile( "E:\\Escritorio\\gametest\\bin\\Debug\\bg.png" ) )
+	if( !gBGTexture.loadFromFile( "resources/bg.png" ) )
 	{
 		printf( "Failed to load background texture!\n" );
 		success = false;
