@@ -224,7 +224,6 @@ Player::Player(SDL_Renderer *r)
     playerTexture = {r};
 	if ( !playerTexture.loadFromFile( "resources/Player1.png" ) ) {
 		printf( "Failed to load player texture!\n" );
-        throw std::runtime_error("Failed to load player texture!\n");
 	} else {
         //Set sprite clips
 
@@ -393,7 +392,6 @@ Game::Game() {
 	//Load first background texture
 	if( !BGTexture.loadFromFile( "resources/bg.png" ) ) {
 		printf("Failed to load background texture!\n" );
-        throw std::runtime_error("Failed to load backgroud texture!\n");
 	}
     player = {renderer};
     fps.start();
