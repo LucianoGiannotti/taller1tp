@@ -118,7 +118,7 @@ class LTexture
         }
 
 		//Renders texture at given point
-		void render( int x, int y, SDL_Rect* clip = nullptr, double angle = 0.0, SDL_Point* center = nullptr, SDL_RendererFlip flip = SDL_FLIP_NONE );
+		void render( int x, int y, SDL_Rect* clip = NULL, double angle = 0.0, SDL_Point* center = NULL, SDL_RendererFlip flip = SDL_FLIP_NONE );
 
 		int getWidth() { return mWidth; }
 		int getHeight() { return mHeight; }
@@ -146,7 +146,6 @@ bool LTexture::loadFromFile( std::string path )
 			printf( "Unable to create texture from %s! SDL Error: %s\n", path.c_str(), SDL_GetError() );
 		} else {
 			//Get image dimensions
-	        mTexture = newTexture;
 			mWidth = loadedSurface->w;
 			mHeight = loadedSurface->h;
 		}
@@ -156,6 +155,7 @@ bool LTexture::loadFromFile( std::string path )
 	}
 
 	//Return success
+	mTexture = newTexture;
 	return (newTexture != nullptr);
 }
 
@@ -179,8 +179,8 @@ class Player
 {
     private:
 		//The X and Y offsets of the player
-		int mPosX = 0;
-        int mPosY = 0;
+		int mPosX = 100;
+        int mPosY = 100;
 
 		//The velocity of the player
 		int mVelX = 0;
@@ -224,6 +224,7 @@ Player::Player(SDL_Renderer *r)
     playerTexture = {r};
 	if ( !playerTexture.loadFromFile( "resources/Player1.png" ) ) {
 		printf( "Failed to load player texture!\n" );
+        throw std::runtime_error("Failed to load player texture!\n");
 	} else {
         //Set sprite clips
 
@@ -291,12 +292,14 @@ void Player::handleEvent( SDL_Event& e )
 
 void Player::move()
 {
-    if( ( mPosX >= 0 ) && ( mPosX + PLAYER_WIDTH <= LEVEL_WIDTH ) ) {
-        mPosX += mVelX;
+    mPosX += mVelX;
+    if( ( mPosX < 0 ) || ( mPosX + PLAYER_WIDTH > LEVEL_WIDTH ) ) {
+        mPosX -= mVelX;
     }
 
-    if( ( mPosY >= 0 ) && ( mPosY + PLAYER_HEIGHT <= LEVEL_HEIGHT ) ) {
-        mPosY += mVelY;
+    mPosY += mVelY;
+    if( ( mPosY < 0 ) || ( mPosY + PLAYER_HEIGHT > LEVEL_HEIGHT ) ) {
+        mPosY -= mVelY;
     }
 }
 
@@ -310,9 +313,7 @@ void Player::render( int camX, int camY )
         frame = 0;
     }
 
-    if ((frame / 5 >= 3 )) {
-         printf("PosX: %d\nPosY: %d\n\n", mPosX , mPosY);
-    }
+    printf("PosX: %d\nPosY: %d\n\n", mPosX , mPosY);
 
     SDL_Rect* currentClip = &spriteClips[ frame / 5 ];
 
@@ -392,6 +393,7 @@ Game::Game() {
 	//Load first background texture
 	if( !BGTexture.loadFromFile( "resources/bg.png" ) ) {
 		printf("Failed to load background texture!\n" );
+        throw std::runtime_error("Failed to load backgroud texture!\n");
 	}
     player = {renderer};
     fps.start();
@@ -420,6 +422,7 @@ void Game::handleEvents()
         player.handleEvent(event);
     }
     player.move();
+    centerCamera();
 }
 
 void Game::render()
@@ -476,6 +479,7 @@ int main( int argc, char* args[] )
     while (game.running()) {
         game.handleEvents();
         game.render();
+        game.delay();
     }
 
 	return 0;
