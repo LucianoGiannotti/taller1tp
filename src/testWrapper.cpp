@@ -16,7 +16,7 @@
 
 using namespace std;
 
-int main(int argc, char **argv) {
+int testWrapper(int argc, char **argv) {
 	rapidxml::xml_document<> doc;
 	ifstream theFile("/home/lucio/eclipse-workspace/Contraa/src/config.xml");
 

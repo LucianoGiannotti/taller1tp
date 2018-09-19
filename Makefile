@@ -1,5 +1,5 @@
 #OBJS specifies which files to compile as part of the project
-OBJS = main.cpp
+OBJS = main.cpp Contra.h Contra.cpp Player.h Player.cpp LTexture.h LTexture.cpp Timer.h Timer.cpp
 
 #CC specifies which compiler we're using
 CC = g++
