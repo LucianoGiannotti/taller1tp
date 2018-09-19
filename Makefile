@@ -1,5 +1,5 @@
 #OBJS specifies which files to compile as part of the project
-OBJS = main.cpp Contra.h Contra.cpp Player.h Player.cpp LTexture.h LTexture.cpp Timer.h Timer.cpp
+OBJS = src/main.cpp
 
 #CC specifies which compiler we're using
 CC = g++
@@ -11,7 +11,7 @@ COMPILER_FLAGS = -Wall -std=c++14
 LINKER_FLAGS = -lSDL2 -lSDL2_image
 
 #OBJ_NAME specifies the name of our exectuable
-OBJ_NAME = a.out
+OBJ_NAME = Contra
 
 #This is the target that compiles our executable
 all : $(OBJS)
