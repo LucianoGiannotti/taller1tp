@@ -3,10 +3,7 @@
 #include <SDL2/SDL_image.h>
 #include <cstdio>
 #include <string>
-
-//Debug mode
-
-bool debug_mode = true;
+#include <stdexcept>
 
 //Frames per second
 const int SCREEN_FPS = 30;
@@ -81,19 +78,22 @@ class LTexture
     private:
 		int mWidth = 0;
 		int mHeight = 0;
-        SDL_Texture* mTexture = NULL;
+        SDL_Texture *mTexture = nullptr;
+        SDL_Renderer *renderer = nullptr;
 
 		//Deallocates texture
 		void free() {
             if(mTexture) {
                 SDL_DestroyTexture(mTexture);
-                mTexture = NULL;
+                mTexture = nullptr;
                 mWidth = 0;
                 mHeight = 0;
             }
         }
 
 	public:
+        LTexture() {}
+        LTexture(SDL_Renderer *r): renderer(r) {}
 		~LTexture() { free(); }
 
 		//Loads image at specified path
@@ -118,11 +118,61 @@ class LTexture
         }
 
 		//Renders texture at given point
-		void render( int x, int y, SDL_Rect* clip = NULL, double angle = 0.0, SDL_Point* center = NULL, SDL_RendererFlip flip = SDL_FLIP_NONE );
+		void render( int x, int y, SDL_Rect* clip = nullptr, double angle = 0.0, SDL_Point* center = nullptr, SDL_RendererFlip flip = SDL_FLIP_NONE );
 
 		int getWidth() { return mWidth; }
 		int getHeight() { return mHeight; }
 };
+
+bool LTexture::loadFromFile( std::string path )
+{
+	//Get rid of preexisting texture
+	free();
+
+	//The final texture
+	SDL_Texture* newTexture = nullptr;
+
+	//Load image at specified path
+	SDL_Surface* loadedSurface = IMG_Load( path.c_str() );
+	if( !loadedSurface ) {
+		printf( "Unable to load image %s! SDL_image Error: %s\n", path.c_str(), IMG_GetError() );
+	} else {
+		//Color key image
+		SDL_SetColorKey( loadedSurface, SDL_TRUE, SDL_MapRGB( loadedSurface->format, 0xFF, 0x00, 0xFF ) );
+
+		//Create texture from surface pixels
+        newTexture = SDL_CreateTextureFromSurface( renderer, loadedSurface );
+		if( !newTexture ) {
+			printf( "Unable to create texture from %s! SDL Error: %s\n", path.c_str(), SDL_GetError() );
+		} else {
+			//Get image dimensions
+	        mTexture = newTexture;
+			mWidth = loadedSurface->w;
+			mHeight = loadedSurface->h;
+		}
+
+		//Get rid of old loaded surface
+		SDL_FreeSurface( loadedSurface );
+	}
+
+	//Return success
+	return (newTexture != nullptr);
+}
+
+void LTexture::render( int x, int y, SDL_Rect* clip, double angle, SDL_Point* center, SDL_RendererFlip flip )
+{
+	//Set rendering space and render to screen
+	SDL_Rect renderQuad = { x, y, mWidth, mHeight };
+
+	//Set clip rendering dimensions
+	if (clip) {
+		renderQuad.w = clip->w;
+		renderQuad.h = clip->h;
+	}
+
+	//Render to screen
+	SDL_RenderCopyEx(renderer, mTexture, clip, &renderQuad, angle, center, flip );
+}
 
 //The Player that will move around on the screen
 class Player
@@ -136,6 +186,13 @@ class Player
 		int mVelX = 0;
         int mVelY = 0;
 
+        int frame = 0;
+
+        LTexture playerTexture;
+        //Walking animation
+        static const int walking_animation_frames = 6;
+        SDL_Rect spriteClips[ walking_animation_frames ];
+
     public:
 		//The dimensions of the Player
 		static const int PLAYER_WIDTH = 23;
@@ -144,6 +201,9 @@ class Player
 		//Maximum axis velocity of the player
 		static const int PLAYER_VEL = 8;
 		static const int PLAYER_ACC = 2;
+
+        Player() {}
+        Player(SDL_Renderer *r);
 
 		//Takes key presses and adjusts the player's velocity
 		void handleEvent( SDL_Event& e );
@@ -159,77 +219,46 @@ class Player
 		int getPosY() { return mPosY; }
 };
 
-//Starts up SDL and creates window
-bool init();
-
-//Loads media
-bool loadMedia();
-
-//Frees media and shuts down SDL
-void close();
-
-//The window we'll be rendering to
-SDL_Window* gWindow = NULL;
-
-//The window renderer
-SDL_Renderer* gRenderer = NULL;
-
-//Scene textures
-LTexture gPlayerTexture;
-LTexture gBGTexture;
-
-//Walking animation
-const int WALKING_ANIMATION_FRAMES = 4;
-SDL_Rect gSpriteClips[ WALKING_ANIMATION_FRAMES ];
-
-bool LTexture::loadFromFile( std::string path )
+Player::Player(SDL_Renderer *r)
 {
-	//Get rid of preexisting texture
-	free();
-
-	//The final texture
-	SDL_Texture* newTexture = NULL;
-
-	//Load image at specified path
-	SDL_Surface* loadedSurface = IMG_Load( path.c_str() );
-	if( !loadedSurface ) {
-		printf( "Unable to load image %s! SDL_image Error: %s\n", path.c_str(), IMG_GetError() );
+    playerTexture = {r};
+	if ( !playerTexture.loadFromFile( "resources/Player1.png" ) ) {
+		printf( "Failed to load player texture!\n" );
 	} else {
-		//Color key image
-		SDL_SetColorKey( loadedSurface, SDL_TRUE, SDL_MapRGB( loadedSurface->format, 0xFF, 0x00, 0xFF ) );
+        //Set sprite clips
 
-		//Create texture from surface pixels
-        newTexture = SDL_CreateTextureFromSurface( gRenderer, loadedSurface );
-		if( !newTexture ) {
-			printf( "Unable to create texture from %s! SDL Error: %s\n", path.c_str(), SDL_GetError() );
-		} else {
-			//Get image dimensions
-	        mTexture = newTexture;
-			mWidth = loadedSurface->w;
-			mHeight = loadedSurface->h;
-		}
+        //Idle animation
+        spriteClips[0].x = 143;
+        spriteClips[0].y = 17;
+        spriteClips[0].w = 23;
+        spriteClips[0].h = 34;
 
-		//Get rid of old loaded surface
-		SDL_FreeSurface( loadedSurface );
+        //Walking animation
+        spriteClips[1].x = 146;
+        spriteClips[1].y = 134;
+        spriteClips[1].w = 23;
+        spriteClips[1].h = 34;
+
+        spriteClips[2].x = 169;
+        spriteClips[2].y = 134;
+        spriteClips[2].w = 20;
+        spriteClips[2].h = 34;
+
+        spriteClips[3].x = 192;
+        spriteClips[3].y = 134;
+        spriteClips[3].w = 20;
+        spriteClips[3].h = 34;
+
+        spriteClips[4].x = 215;
+        spriteClips[4].y = 134;
+        spriteClips[4].w = 23;
+        spriteClips[4].h = 34;
+
+        spriteClips[5].x = 238;
+        spriteClips[5].y = 43;
+        spriteClips[5].w = 23;
+        spriteClips[5].h = 34;
 	}
-
-	//Return success
-	return (newTexture != NULL);
-}
-
-void LTexture::render( int x, int y, SDL_Rect* clip, double angle, SDL_Point* center, SDL_RendererFlip flip )
-{
-	//Set rendering space and render to screen
-	SDL_Rect renderQuad = { x, y, mWidth, mHeight };
-
-	//Set clip rendering dimensions
-	if (clip) {
-		renderQuad.w = clip->w;
-		renderQuad.h = clip->h;
-	}
-
-	//Render to screen
-	SDL_RenderCopyEx( gRenderer, mTexture, clip, &renderQuad, angle, center, flip );
 }
 
 void Player::handleEvent( SDL_Event& e )
@@ -273,259 +302,181 @@ void Player::move()
 
 void Player::render( int camX, int camY )
 {
-    SDL_Rect* currentClip = &gSpriteClips[ frame / 5 ];
+    //Go to next frame
+    ++frame;
+
+    //Cycle animation
+    if (frame / walking_animation_frames >= walking_animation_frames) {
+        frame = 0;
+    }
+
+    if ((frame / 5 >= 3 )) {
+         printf("PosX: %d\nPosY: %d\n\n", mPosX , mPosY);
+    }
+
+    SDL_Rect* currentClip = &spriteClips[ frame / 5 ];
 
     //Show the player relative to the camera
-	gPlayerTexture.render( mPosX - camX, mPosY - camY, currentClip );
+	playerTexture.render( mPosX - camX, mPosY - camY, currentClip );
 }
 
+class Game {
+    private:
+        bool is_running = false;
+        std::string windowTitle = "Contra - Parallax";
+        SDL_Window *window = nullptr;
+        SDL_Renderer *renderer = nullptr;
+        LTexture BGTexture;
+        Player player;
+        Timer fps;
+        SDL_Rect camera = { 0, 0, 800, 600 };
 
-bool init()
-{
-	//Initialization flag
-	bool success = true;
+        void centerCamera();
 
-	//Initialize SDL
-	if( SDL_Init( SDL_INIT_VIDEO ) < 0 )
-	{
+    public:
+        Game();
+        ~Game();
+
+        void handleEvents();
+        void update();
+        void render();
+        void clean();
+        void delay();
+
+        bool running() { return is_running; }
+};
+
+Game::Game() {
+	if ( SDL_Init( SDL_INIT_VIDEO ) < 0 ) {
 		printf( "SDL could not initialize! SDL Error: %s\n", SDL_GetError() );
-		success = false;
-	}
-	else
-	{
-		//Set texture filtering to linear
-		if( !SDL_SetHint( SDL_HINT_RENDER_SCALE_QUALITY, "1" ) )
-		{
-			printf( "Warning: Linear texture filtering not enabled!" );
-		}
-
-		//Create window
-		gWindow = SDL_CreateWindow( "Contra - Parallax", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, SCREEN_WIDTH, SCREEN_HEIGHT, SDL_WINDOW_SHOWN );
-		if( gWindow == NULL )
-		{
-			printf( "Window could not be created! SDL Error: %s\n", SDL_GetError() );
-			success = false;
-		}
-		else
-		{
-			//Create vsynced renderer for window
-			gRenderer = SDL_CreateRenderer( gWindow, -1, SDL_RENDERER_ACCELERATED);
-			if( gRenderer == NULL )
-			{
-				printf( "Renderer could not be created! SDL Error: %s\n", SDL_GetError() );
-				success = false;
-			}
-			else
-			{
-				//Initialize renderer color
-				SDL_SetRenderDrawColor( gRenderer, 0xFF, 0xFF, 0xFF, 0xFF );
-
-				//Initialize PNG loading
-				int imgFlags = IMG_INIT_PNG;
-				if( !( IMG_Init( imgFlags ) & imgFlags ) )
-				{
-					printf( "SDL_image could not initialize! SDL_image Error: %s\n", IMG_GetError() );
-					success = false;
-				}
-			}
-		}
+        throw std::runtime_error("SDL could not initialize!");
 	}
 
-	return success;
-}
-
-bool loadMedia()
-{
-	//Loading success flag
-	bool success = true;
-
-	//Load player texture
-	if( !gPlayerTexture.loadFromFile( "resources/Player1.png" ) )
-	{
-		printf( "Failed to load player texture!\n" );
-		success = false;
-	}
-	else
+    //Set texture filtering to linear
+    if ( !SDL_SetHint( SDL_HINT_RENDER_SCALE_QUALITY, "1" ) )
     {
-        //Set sprite clips
+        printf( "Warning: Linear texture filtering not enabled!" );
+    }
 
-        //Idle animation
+    //Create window
+    window = SDL_CreateWindow( windowTitle.c_str(), SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, SCREEN_WIDTH, SCREEN_HEIGHT, SDL_WINDOW_SHOWN );
+    if (!window) {
+        printf( "Window could not be created! SDL Error: %s\n", SDL_GetError() );
+	    SDL_Quit();
+        throw std::runtime_error("Window could not be created!");
+    }
 
-        gSpriteClips[0].x = 143;
-        gSpriteClips[0].y = 17;
-        gSpriteClips[0].w = 23;
-        gSpriteClips[0].h = 34;
+    //Create vsynced renderer for window
+    renderer = SDL_CreateRenderer( window, -1, SDL_RENDERER_ACCELERATED);
+    if (!renderer) {
+        printf( "Renderer could not be created! SDL Error: %s\n", SDL_GetError() );
+	    SDL_DestroyWindow(window);
+	    SDL_Quit();
+        throw std::runtime_error("Renderer could not be created!");
+    }
 
-        //Walking animation
+    //Initialize renderer color
+    SDL_SetRenderDrawColor( renderer, 0xFF, 0xFF, 0xFF, 0xFF );
 
-        gSpriteClips[1].x = 146;
-        gSpriteClips[1].y = 134;
-        gSpriteClips[1].w = 23;
-        gSpriteClips[1].h = 34;
+    //Initialize PNG loading
+    int imgFlags = IMG_INIT_PNG;
+    if ( !( IMG_Init( imgFlags ) & imgFlags ) ) {
+        printf( "SDL_image could not initialize! SDL_image Error: %s\n", IMG_GetError() );
+        SDL_DestroyRenderer(renderer);
+        SDL_DestroyWindow(window);
+	    SDL_Quit();
+        throw std::runtime_error("SDL_image could not initialize!");
+    }
 
-        gSpriteClips[2].x = 169;
-        gSpriteClips[2].y = 134;
-        gSpriteClips[2].w = 20;
-        gSpriteClips[2].h = 34;
-
-        gSpriteClips[3].x = 192;
-        gSpriteClips[3].y = 134;
-        gSpriteClips[3].w = 20;
-        gSpriteClips[3].h = 34;
-
-        gSpriteClips[4].x = 215;
-        gSpriteClips[4].y = 134;
-        gSpriteClips[4].w = 23;
-        gSpriteClips[4].h = 34;
-
-        gSpriteClips[5].x = 238;
-        gSpriteClips[5].y = 43;
-        gSpriteClips[5].w = 23;
-        gSpriteClips[5].h = 34;
-
-	}
-
+    BGTexture = {renderer};
 	//Load first background texture
-	if( !gBGTexture.loadFromFile( "resources/bg.png" ) )
-	{
-		printf( "Failed to load background texture!\n" );
-		success = false;
+	if( !BGTexture.loadFromFile( "resources/bg.png" ) ) {
+		printf("Failed to load background texture!\n" );
 	}
-
-	return success;
+    player = {renderer};
+    fps.start();
+    is_running = true;
 }
 
-void close()
-{
+Game::~Game() {
 	//Destroy window
-	SDL_DestroyRenderer( gRenderer );
-	SDL_DestroyWindow( gWindow );
-	gWindow = NULL;
-	gRenderer = NULL;
+	SDL_DestroyRenderer(renderer);
+	SDL_DestroyWindow(window);
+	window = nullptr;
+	renderer = nullptr;
 
 	//Quit SDL subsystems
 	IMG_Quit();
 	SDL_Quit();
 }
 
+void Game::handleEvents()
+{
+    SDL_Event event;
+    SDL_PollEvent(&event);
+    if (event.type == SDL_QUIT) {
+        is_running = false;
+    } else {
+        player.handleEvent(event);
+    }
+    player.move();
+}
+
+void Game::render()
+{
+    //Clear screen
+    SDL_SetRenderDrawColor( renderer, 0xFF, 0xFF, 0xFF, 0xFF );
+    SDL_RenderClear( renderer );
+
+    //Render background
+    BGTexture.render( 0, 0, &camera);
+
+    //Render objects
+    player.render( camera.x, camera.y );
+
+    //Update screen
+    SDL_RenderPresent( renderer );
+}
+
+void Game::centerCamera()
+{
+    //Center the camera over the player
+    camera.x = ( player.getPosX() + Player::PLAYER_WIDTH / 2 ) - SCREEN_WIDTH / 2;
+    camera.y = SCREEN_HEIGHT / 2;
+
+    //Keep the camera in bounds
+    if( camera.x < 0 ) {
+        camera.x = 0;
+    }
+    if( camera.y < 0 ) {
+        camera.y = 0;
+    }
+    if( camera.x > LEVEL_WIDTH - camera.w ) {
+        camera.x = LEVEL_WIDTH - camera.w;
+    }
+    if( camera.y > LEVEL_HEIGHT - camera.h ) {
+        camera.y = LEVEL_HEIGHT - camera.h;
+    }
+}
+
+void Game::delay()
+{
+    //If we want to cap the frame rate
+    if ( fps.get_ticks() < 1000 / SCREEN_FPS ) {
+        //Sleep the remaining frame time
+        SDL_Delay( ( 1000 / SCREEN_FPS ) - fps.get_ticks() );
+    }
+}
+
+
 int main( int argc, char* args[] )
 {
-    if (debug_mode){
-        printf("Modo debug habilitado\n");
+    Game game;
+
+    while (game.running()) {
+        game.handleEvents();
+        game.render();
     }
-    //The frame rate regulator
-    Timer fps;
-	//Start up SDL and create window
-	if( !init() )
-	{
-		printf( "Failed to initialize!\n" );
-	}
-	else
-	{
-		//Load media
-		if( !loadMedia() )
-		{
-			printf( "Failed to load media!\n" );
-		}
-		else
-		{
-			//Main loop flag
-			bool quit = false;
-
-			//Event handler
-			SDL_Event e;
-
-			//The player that will be moving around on the screen
-			Player player;
-
-			//The camera area
-			SDL_Rect camera = { 0, 0, 800, 600 };
-			//While application is running
-			while( !quit )
-			{
-                //Start the frame timer
-                fps.start();
-
-				//Handle events on queue
-				while( SDL_PollEvent( &e ) != 0 )
-				{
-					//User requests quit
-					if( e.type == SDL_QUIT )
-					{
-						quit = true;
-					}
-
-					//Handle input for the player
-					player.handleEvent( e );
-				}
-
-				//Move the player
-				player.move();
-
-
-				//Center the camera over the player
-				camera.x = ( player.getPosX() + Player::PLAYER_WIDTH / 2 ) - SCREEN_WIDTH / 2;
-				camera.y = SCREEN_HEIGHT / 2;
-
-
-				//Keep the camera in bounds
-				if( camera.x < 0 )
-				{
-					camera.x = 0;
-				}
-				if( camera.y < 0 )
-				{
-					camera.y = 0;
-				}
-				if( camera.x > LEVEL_WIDTH - camera.w )
-				{
-					camera.x = LEVEL_WIDTH - camera.w;
-				}
-				if( camera.y > LEVEL_HEIGHT - camera.h )
-				{
-				    camera.y = LEVEL_HEIGHT - camera.h;
-				}
-
-				//Clear screen
-				SDL_SetRenderDrawColor( gRenderer, 0xFF, 0xFF, 0xFF, 0xFF );
-				SDL_RenderClear( gRenderer );
-
-				//Render background
-				gBGTexture.render( 0, 0, &camera);
-
-				//Render objects
-				player.render( camera.x, camera.y );
-
-				//Update screen
-				SDL_RenderPresent( gRenderer );
-
-                //Go to next frame
-				++frame;
-
-				//Cycle animation
-				if( frame / WALKING_ANIMATION_FRAMES >= WALKING_ANIMATION_FRAMES )
-				{
-					frame = 0;
-				}
-
-
-                if((frame / 5 >= 3 ) && (debug_mode)){
-                     printf("PosX: %d\nPosY: %d\n\n",player.getPosX(),player.getPosY());
-                }
-
-
-                //If we want to cap the frame rate
-                if ( fps.get_ticks() < 1000 / SCREEN_FPS )
-                {
-                    //Sleep the remaining frame time
-                    SDL_Delay( ( 1000 / SCREEN_FPS ) - fps.get_ticks() );
-                }
-			}
-		}
-	}
-
-	//Free resources and close SDL
-	close();
 
 	return 0;
 }

@@ -5,7 +5,7 @@ OBJS = src/main.cpp
 CC = g++
 
 #COMPILER_FLAGS specifies the additional compilation options we're using
-COMPILER_FLAGS = -Wall -std=c++14
+COMPILER_FLAGS = -Wall -std=c++14 -g
 
 #LINKER_FLAGS specifies the libraries we're linking against
 LINKER_FLAGS = -lSDL2 -lSDL2_image
