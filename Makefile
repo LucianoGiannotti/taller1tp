@@ -1,18 +1,35 @@
-#OBJS specifies which files to compile as part of the project
-OBJS = src/main.cpp
+CC       = g++
+CFLAGS   = -g -std=gnu++0x -Wall -Wno-reorder #-std=gnu++0x 
 
-#CC specifies which compiler we're using
-CC = g++
+LFLAGS = -lSDL2 -lSDL2_image
 
-#COMPILER_FLAGS specifies the additional compilation options we're using
-COMPILER_FLAGS = -Wall -std=c++14 -g
+SRC_DIRS ?= ./src
+BUILD_DIR ?= ./objs
+HEAD_DIR ?= ./src
 
-#LINKER_FLAGS specifies the libraries we're linking against
-LINKER_FLAGS = -lSDL2 -lSDL2_image
+SRCS := $(shell find $(SRC_DIRS) -name *.cpp)
+OBJS  := $(SRCS:$(SRC_DIRS)/%.cpp=$(BUILD_DIR)/%.o)
+INCLUDES := $(wildcard $(SRC_DIRS)/*.h)
 
-#OBJ_NAME specifies the name of our exectuable
-OBJ_NAME = Contra
+HEADERS = $(shell find $(HEAD_DIR) -name *.hpp)
 
-#This is the target that compiles our executable
-all : $(OBJS)
-	$(CC) $(OBJS) $(COMPILER_FLAGS) $(LINKER_FLAGS) -o $(OBJ_NAME)
+MAIN = Contra
+
+MKDIR_P ?= mkdir -p
+
+$(BUILD_DIR)/$(MAIN): ${OBJS}
+	${CC} ${OBJS} ${CFLAGS} ${LFLAGS} -o ${MAIN}
+
+$(OBJS): $(BUILD_DIR)/%.o : $(SRC_DIRS)/%.cpp
+#$(BUILD_DIR)/%.cpp.o: %.cpp
+	@mkdir -p $(BUILD_DIR)
+	${CC} $(LFLAGS) ${CFLAGS} -c $< -o $@
+
+all: ${MAIN}
+	@echo   Simple compiler named Contra has been compiled
+
+.PHONY: clean
+
+clean:
+	$(RM) -r $(BUILD_DIR)
+

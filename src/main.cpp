@@ -4,7 +4,7 @@
 #include <cstdio>
 #include <string>
 #include <stdexcept>
-
+#include <src/Timer.h>
 //Frames per second
 const int SCREEN_FPS = 30;
 const int SCREEN_TICK_PER_FRAME = 1000 / SCREEN_FPS;
@@ -17,56 +17,6 @@ const int LEVEL_HEIGHT = 600;
 const int SCREEN_WIDTH = 800;
 const int SCREEN_HEIGHT = 600;
 
-//The timer
-class Timer
-{
-    private:
-        int startTicks = 0;
-        int pausedTicks = 0;
-        bool paused = false;
-        bool started = false;
-
-    public:
-        void start() {
-            started = true;
-            paused = false;
-            startTicks = SDL_GetTicks();
-        }
-
-        void stop() {
-            started = false;
-            paused = false;
-        }
-
-        void pause() {
-            if (started && !paused) {
-                paused = true;
-                pausedTicks = SDL_GetTicks() - startTicks;
-            }
-        }
-
-        void unpause() {
-            if (paused) {
-                paused = false;
-                startTicks = SDL_GetTicks() - pausedTicks;
-                pausedTicks = 0;
-            }
-        }
-
-        int get_ticks() {
-            if (started) {
-                if (paused) {
-                    return pausedTicks;
-                } else {
-                    return SDL_GetTicks() - startTicks;
-                }
-            }
-            return 0;
-        }
-
-        bool is_started() { return started; }
-        bool is_paused() { return paused; }
-};
 
 //Texture wrapper class
 class LTexture
