@@ -275,8 +275,7 @@ void Player::handleEvent( SDL_Event& e )
     else if( e.type == SDL_KEYUP && e.key.repeat == 0 )
     {
         //Adjust the velocity
-        switch( e.key.keysym.sym )
-        {
+        switch( e.key.keysym.sym ) {
             case SDLK_UP: mVelY += PLAYER_VEL; break;
             case SDLK_DOWN: mVelY -= PLAYER_VEL; break;
             case SDLK_LEFT: mVelX += PLAYER_VEL; break;
@@ -465,10 +464,89 @@ void Game::delay()
     }
 }
 
+// Estructura para almacenar el estado después de la lectura de los argumentos
+struct ops_status {
+    bool error;
+    bool help;
+    bool version;
+    unsigned log_level;
+    std::string config_filepath;
+};
 
-int main( int argc, char* args[] )
+struct ops_status read_arguments(int *pargc, char **pargv[])
+{
+    int argc = *pargc;
+    char **argv = *pargv;
+    struct ops_status result = {false, false, false, 1, ""};
+
+    for (int i = 1; i < argc; i++) {
+        std::string s = argv[i];
+
+        if (s == "--help" || s == "-h") {
+            result.help = true;
+        } else if (s == "--version" || s == "-V") {
+            result.version = true;
+        } else if (s == "--log_level" || s == "-l") {
+            result.log_level = std::stoi(argv[++i]);    // Asumo que el número es el siguiente string, lo convierto a int e incremento i
+            if (result.log_level == 0 || result.log_level > 3) {
+                result.error = true;    // Si el número no está en el rango [1, 3] es un error
+                break;
+            }
+        } else if (s == "--config_xml" || s == "-c") {
+            result.config_filepath = argv[++i]; // Asumo que el filename es el siguiente string, lo asigno e incremento i
+        } else {
+            // Cualquier otro argumento es un error y hay que salir
+            result.error = true;
+            break;
+        }
+    }
+    return result;
+}
+
+void print_help_message()
+{
+    printf(
+    "Usage:\n"
+    "\tContra -h\n"
+    "\tContra -V\n"
+    "\tContra [options] filename_XML\n"
+    "Options:\n"
+    "\t-h, --help \t Prints usage information.\n"
+    "\t-V, --version \t Prints version and quit.\n"
+    "\t-l, --log_level \t Log level to use.\n"
+    "\t\t1 : Error (default)\n"
+    "\t\t2 : Info\n"
+    "\t\t3 : Debug\n"
+    "\t-c, --config_xml \t Path to the config.xml.\n"
+    "Examples:\n"
+    "Contra -c config.xml -l 2\n"
+    "Contra -c config.xml\n"
+    "Contra -l 3\n"
+    );
+}
+
+void print_version_message()
+{
+    printf("Contra version 1.0\n");
+}
+
+int main(int argc, char* argv[])
 {
     Game game;
+    struct ops_status options = read_arguments(&argc, &argv);
+
+    if (options.error) {
+        fprintf(stderr, "Error en los argumentos!\n");
+        return EXIT_FAILURE;
+    }
+    if (options.help) {
+        print_help_message();
+        return EXIT_SUCCESS;
+    }
+    if (options.version) {
+        print_version_message();
+        return EXIT_SUCCESS;
+    }
 
     while (game.running()) {
         game.handleEvents();
@@ -476,5 +554,5 @@ int main( int argc, char* args[] )
         game.delay();
     }
 
-	return 0;
+	return EXIT_SUCCESS;
 }
