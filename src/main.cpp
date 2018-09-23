@@ -275,7 +275,8 @@ void Player::handleEvent( SDL_Event& e )
     else if( e.type == SDL_KEYUP && e.key.repeat == 0 )
     {
         //Adjust the velocity
-        switch( e.key.keysym.sym ) { case SDLK_UP: mVelY += PLAYER_VEL; break;
+        switch( e.key.keysym.sym ) {
+            case SDLK_UP: mVelY += PLAYER_VEL; break;
             case SDLK_DOWN: mVelY -= PLAYER_VEL; break;
             case SDLK_LEFT: mVelX += PLAYER_VEL; break;
             case SDLK_RIGHT: mVelX -= PLAYER_VEL; break;
