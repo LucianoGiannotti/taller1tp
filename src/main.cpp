@@ -4,7 +4,7 @@
 #include <cstdio>
 #include <string>
 #include <stdexcept>
-#include <src/Timer.h>
+#include "Timer.h"
 //Frames per second
 const int SCREEN_FPS = 30;
 const int SCREEN_TICK_PER_FRAME = 1000 / SCREEN_FPS;
