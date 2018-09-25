@@ -4,7 +4,8 @@
 #include <cstdio>
 #include <string>
 #include <stdexcept>
-#include "Timer.h"
+#include "../includes/Timer.h"
+#include "../includes/Log.h"
 //Frames per second
 const int SCREEN_FPS = 30;
 const int SCREEN_TICK_PER_FRAME = 1000 / SCREEN_FPS;
@@ -26,6 +27,7 @@ class LTexture
 		int mHeight = 0;
         SDL_Texture *mTexture = nullptr;
         SDL_Renderer *renderer = nullptr;
+        Log *logger;
 
 		//Deallocates texture
 		void free() {
@@ -39,7 +41,7 @@ class LTexture
 
 	public:
         LTexture() {}
-        LTexture(SDL_Renderer *r): renderer(r) {}
+        LTexture(SDL_Renderer *r, Log *log): renderer(r) { logger = log;}
 		~LTexture() { free(); }
 
 		//Loads image at specified path
@@ -81,7 +83,8 @@ bool LTexture::loadFromFile( std::string path )
 	//Load image at specified path
 	SDL_Surface* loadedSurface = IMG_Load( path.c_str() );
 	if( !loadedSurface ) {
-		printf( "Unable to load image %s! SDL_image Error: %s\n", path.c_str(), IMG_GetError() );
+		//printf( "Unable to load image %s! SDL_image Error: %s\n", path.c_str(), IMG_GetError() );
+		logger->errorCargandoImagen( IMG_GetError(), path.c_str() );
 	} else {
 		//Color key image
 		SDL_SetColorKey( loadedSurface, SDL_TRUE, SDL_MapRGB( loadedSurface->format, 0xFF, 0x00, 0xFF ) );
@@ -89,7 +92,8 @@ bool LTexture::loadFromFile( std::string path )
 		//Create texture from surface pixels
         newTexture = SDL_CreateTextureFromSurface( renderer, loadedSurface );
 		if( !newTexture ) {
-			printf( "Unable to create texture from %s! SDL Error: %s\n", path.c_str(), SDL_GetError() );
+			//printf( "Unable to create texture from %s! SDL Error: %s\n", path.c_str(), SDL_GetError() );
+			logger->errorCreandoTextura(SDL_GetError(), path.c_str());
 		} else {
 			//Get image dimensions
 			mWidth = loadedSurface->w;
@@ -139,6 +143,8 @@ class Player
         static const int walking_animation_frames = 6;
         SDL_Rect spriteClips[ walking_animation_frames ];
 
+        Log *logger;
+
     public:
 		//The dimensions of the Player
 		static const int PLAYER_WIDTH = 23;
@@ -149,7 +155,7 @@ class Player
 		static const int PLAYER_ACC = 2;
 
         Player() {}
-        Player(SDL_Renderer *r);
+        Player(SDL_Renderer *r, Log *log);
 
 		//Takes key presses and adjusts the player's velocity
 		void handleEvent( SDL_Event& e );
@@ -165,10 +171,11 @@ class Player
 		int getPosY() { return mPosY; }
 };
 
-Player::Player(SDL_Renderer *r)
+Player::Player(SDL_Renderer *r, Log *log)
 {
-    playerTexture = {r};
-	if ( !playerTexture.loadFromFile( "resources/Player1.png" ) ) {
+    playerTexture = {r, log};
+    logger = log;
+	if ( !playerTexture.loadFromFile( "../resources/Player1.png" ) ) {
 		printf( "Failed to load player texture!\n" );
 	} else {
         //Set sprite clips
@@ -275,11 +282,13 @@ class Game {
         Player player;
         Timer fps;
         SDL_Rect camera = { 0, 0, 800, 600 };
+        Log *logger;
+
 
         void centerCamera();
 
     public:
-        Game();
+        Game(Log *log);
         ~Game();
 
         void handleEvents();
@@ -291,9 +300,11 @@ class Game {
         bool running() { return is_running; }
 };
 
-Game::Game() {
+Game::Game(Log *log) {
+	logger = log;
 	if ( SDL_Init( SDL_INIT_VIDEO ) < 0 ) {
-		printf( "SDL could not initialize! SDL Error: %s\n", SDL_GetError() );
+		log->errorInicializandoSDL(SDL_GetError() );
+		//printf( "SDL could not initialize! SDL Error: %s\n", SDL_GetError() );
         throw std::runtime_error("SDL could not initialize!");
 	}
 
@@ -306,19 +317,23 @@ Game::Game() {
     //Create window
     window = SDL_CreateWindow( windowTitle.c_str(), SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, SCREEN_WIDTH, SCREEN_HEIGHT, SDL_WINDOW_SHOWN );
     if (!window) {
-        printf( "Window could not be created! SDL Error: %s\n", SDL_GetError() );
+        //printf( "Window could not be created! SDL Error: %s\n", SDL_GetError() );
+    	log->errorCreandoVentana(SDL_GetError() );
 	    SDL_Quit();
         throw std::runtime_error("Window could not be created!");
     }
+    log->ventanaCreada();
 
     //Create vsynced renderer for window
     renderer = SDL_CreateRenderer( window, -1, SDL_RENDERER_ACCELERATED);
     if (!renderer) {
-        printf( "Renderer could not be created! SDL Error: %s\n", SDL_GetError() );
+        //printf( "Renderer could not be created! SDL Error: %s\n", SDL_GetError() );
+    	log->errorCreandoRenderer( SDL_GetError() );
 	    SDL_DestroyWindow(window);
 	    SDL_Quit();
         throw std::runtime_error("Renderer could not be created!");
     }
+    log->renderCreado();
 
     //Initialize renderer color
     SDL_SetRenderDrawColor( renderer, 0xFF, 0xFF, 0xFF, 0xFF );
@@ -326,21 +341,26 @@ Game::Game() {
     //Initialize PNG loading
     int imgFlags = IMG_INIT_PNG;
     if ( !( IMG_Init( imgFlags ) & imgFlags ) ) {
-        printf( "SDL_image could not initialize! SDL_image Error: %s\n", IMG_GetError() );
+        //printf( "SDL_image could not initialize! SDL_image Error: %s\n", IMG_GetError() );
+    	log->errorInicializandoSdlImage( IMG_GetError() );
         SDL_DestroyRenderer(renderer);
         SDL_DestroyWindow(window);
 	    SDL_Quit();
         throw std::runtime_error("SDL_image could not initialize!");
     }
 
-    BGTexture = {renderer};
+    BGTexture = {renderer, log};
 	//Load first background texture
 	if( !BGTexture.loadFromFile( "resources/bg.png" ) ) {
-		printf("Failed to load background texture!\n" );
+		//printf("Failed to load background texture!\n" );
+		logger->errorCargandoImagen(SDL_GetError(),"resources/bg.png" );
+	} else {
+		logger->imagenRenderizadaConExito("resources/bg.png");
+	    player = {renderer, log};
+	    fps.start();
+	    is_running = true;
 	}
-    player = {renderer};
-    fps.start();
-    is_running = true;
+
 }
 
 Game::~Game() {
@@ -361,6 +381,7 @@ void Game::handleEvents()
     SDL_PollEvent(&event);
     if (event.type == SDL_QUIT) {
         is_running = false;
+        logger->juegoCerrandoseCorrectamente();
     } else {
         player.handleEvent(event);
     }
@@ -482,7 +503,6 @@ void print_version_message()
 
 int main(int argc, char* argv[])
 {
-    Game game;
     struct ops_status options = read_arguments(&argc, &argv);
 
     if (options.error) {
@@ -498,11 +518,15 @@ int main(int argc, char* argv[])
         return EXIT_SUCCESS;
     }
 
+	Log *logger = new Log(options.log_level);
+    Game game = Game(logger);
+
     while (game.running()) {
         game.handleEvents();
         game.render();
         game.delay();
     }
+    logger->cerrarArchivo();
 
 	return EXIT_SUCCESS;
 }

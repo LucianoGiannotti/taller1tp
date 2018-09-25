@@ -19,7 +19,6 @@ private:
     static std::ofstream file;
     static int nivel;
     void abrirArchivo(std::string str, int nivel_);
-    void cerrarArchivo();
     bool estaAbierto();
     void setearNivel(int nivel_);
     static int getNivel();
@@ -40,14 +39,15 @@ public:
 // mensajes para Nivel Info
     static void juegoCerrandoseCorrectamente();
     static void juegoInicializado();
+    static void cerrarArchivo();
 
 
 
 // mensajes para Nivel Debug
-    static void imagenRenderizadaConExito();
+    static void infoDeEvento(const char* tecla);
+    static void imagenRenderizadaConExito(std::string path);
     static void ventanaCreada();
     static void renderCreado();
-    static void equipoCreado();
     static void jugadorCreado();
     static void texturaDestruida();
 

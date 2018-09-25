@@ -35,7 +35,7 @@ Log::~Log()
 void Log::abrirArchivo(string str, int nivel_)
 {
     file.open(str, ios::out | ios::app);
-	escribirArchivo("******************************\n***********Logger event level **************\n ************************\n\n\n\n");
+	escribirArchivo("******************************\n***********Logger event level **************\n ************************\n\n");
 }
 
 bool Log::estaAbierto()
@@ -105,15 +105,18 @@ void Log::texturaDestruida()
 	escribirArchivo(mensaje);
 }
 
-void Log::imagenRenderizadaConExito()
+void Log::imagenRenderizadaConExito(std::string path)
 {
 	int i = getNivel();
 	switch (i) {
 	case 1: return;
 	case 2: return;
 	}
-	const char* mensaje = "Imagen renderizada con éxito\n";
-	escribirArchivo(mensaje);
+
+	std::string msj = "Imagen renderizada con éxito: ";
+	std::string mensaje = msj + path;
+    const char* msg_string = mensaje.c_str();
+    escribirArchivo(msg_string);
 }
 
 void Log::juegoInicializado()
